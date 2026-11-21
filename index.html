@@ -1,0 +1,99 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Localizador de EAN</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f9;font-family:Arial,sans-serif;color:#202938}
+main{max-width:620px;margin:55px auto;padding:20px}
+.card{background:white;padding:30px;border-radius:16px;box-shadow:0 5px 25px #0000000c}
+h1{margin:0 0 8px;font-size:27px}
+p{color:#687386;line-height:1.5}
+label{display:block;font-weight:bold;margin:25px 0 9px}
+input{width:100%;padding:15px;border:1px solid #d5dbe5;border-radius:9px;font-size:15px}
+button{width:100%;padding:15px;border:0;border-radius:9px;background:#1769e0;color:white;font-size:15px;font-weight:bold;cursor:pointer;margin-top:13px}
+button.secondary{background:#eaf0fa;color:#1769e0}
+#result{margin-top:20px;padding:15px;border-radius:9px;background:#f1f5fb;display:none;line-height:1.6}
+.small{font-size:12px;color:#7b8493;margin-top:20px}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<h1>🔎 Localizador de EAN</h1>
+<p>Descubra informações sobre o código de barras de produtos da Amazon e do Mercado Livre.</p>
+
+<label for="url">Cole o link do produto:</label>
+<input id="url" type="url" placeholder="https://www.amazon.com.br/...">
+
+<button onclick="pesquisar()">PESQUISAR EAN</button>
+
+<div id="result"></div>
+
+<p class="small">
+A ferramenta prepara pesquisas públicas para localizar o EAN.
+Os resultados precisam ser conferidos na fonte. Nenhum código é inventado ou confirmado automaticamente.
+</p>
+</div>
+</main>
+
+<script>
+function pesquisar(){
+ const campo=document.getElementById("url");
+ const resultado=document.getElementById("result");
+ let endereco;
+
+ try{
+   endereco=new URL(campo.value.trim());
+ }catch(e){
+   alert("Cole um link válido.");
+   return;
+ }
+
+ const dominio=endereco.hostname.toLowerCase();
+ let marketplace="";
+
+ if(dominio.includes("amazon.")){
+   marketplace="Amazon";
+ }else if(dominio.includes("mercadolivre.") || dominio.includes("mercadolibre.")){
+   marketplace="Mercado Livre";
+ }else{
+   alert("Use um link da Amazon ou do Mercado Livre.");
+   return;
+ }
+
+ let slug=endereco.pathname.split("/")
+   .filter(Boolean)
+   .filter(x=>!/^dp$|^gp$|^product$|^p$/i.test(x))
+   .join(" ");
+
+ try{slug=decodeURIComponent(slug)}catch(e){}
+
+ slug=slug.replace(/[-_]+/g," ")
+   .replace(/\b(MLB\d+|B[A-Z0-9]{9})\b/gi," ")
+   .replace(/\s+/g," ")
+   .trim();
+
+ if(slug.length<3){
+   slug=endereco.href;
+ }
+
+ const consulta='"'+slug+'" (EAN OR GTIN OR "código de barras")';
+
+ const google="https://www.google.com/search?q="+encodeURIComponent(consulta);
+ const bing="https://www.bing.com/search?q="+encodeURIComponent(consulta);
+
+ resultado.style.display="block";
+ resultado.innerHTML=
+  "<strong>Produto recebido</strong><br>"+
+  "Marketplace: "+marketplace+
+  "<br><br>Pesquise o código nas fontes públicas:"+
+  '<button onclick="window.open(\''+google+'\',\'_blank\')">PESQUISAR NO GOOGLE</button>'+
+  '<button class="secondary" onclick="window.open(\''+bing+'\',\'_blank\')">PESQUISAR NO BING</button>';
+}
+</script>
+</body>
+</html>
