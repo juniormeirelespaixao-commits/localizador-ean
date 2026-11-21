@@ -3,96 +3,148 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Localizador de EAN</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Localizador Inteligente de EAN</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f3f5f9;font-family:Arial,sans-serif;color:#202938}
-main{max-width:620px;margin:55px auto;padding:20px}
-.card{background:white;padding:30px;border-radius:16px;box-shadow:0 5px 25px #0000000c}
-h1{margin:0 0 8px;font-size:27px}
-p{color:#687386;line-height:1.5}
-label{display:block;font-weight:bold;margin:25px 0 9px}
-input{width:100%;padding:15px;border:1px solid #d5dbe5;border-radius:9px;font-size:15px}
-button{width:100%;padding:15px;border:0;border-radius:9px;background:#1769e0;color:white;font-size:15px;font-weight:bold;cursor:pointer;margin-top:13px}
-button.secondary{background:#eaf0fa;color:#1769e0}
-#result{margin-top:20px;padding:15px;border-radius:9px;background:#f1f5fb;display:none;line-height:1.6}
-.small{font-size:12px;color:#7b8493;margin-top:20px}
+body{margin:0;background:#f1f4f9;color:#202938;font-family:Arial,sans-serif}
+main{max-width:650px;margin:35px auto;padding:16px}
+.card{background:white;border-radius:16px;padding:28px;box-shadow:0 5px 25px #0001}
+h1{margin:0 0 8px;font-size:26px}
+p{color:#697586;line-height:1.5}
+label{display:block;font-weight:bold;margin:20px 0 8px}
+input{width:100%;padding:14px;border:1px solid #d5dce7;border-radius:9px;font-size:15px}
+button{width:100%;padding:14px;border:0;border-radius:9px;background:#1769e0;color:white;font-weight:bold;font-size:14px;cursor:pointer;margin-top:10px}
+.secondary{background:#eaf0fa;color:#1769e0}
+.result{display:none;margin-top:20px;background:#f2f6fc;border-radius:10px;padding:17px}
+.small{font-size:12px;color:#7b8493}
+.tag{display:inline-block;padding:5px 9px;border-radius:20px;background:#e1edff;color:#1769e0;font-size:12px;margin-bottom:10px}
+#eanStatus{margin-top:10px;font-weight:bold}
 </style>
 </head>
 <body>
 <main>
 <div class="card">
-<h1>🔎 Localizador de EAN</h1>
-<p>Descubra informações sobre o código de barras de produtos da Amazon e do Mercado Livre.</p>
+<h1>🔎 Localizador Inteligente de EAN</h1>
+<p>Cole o link de um produto e prepare pesquisas direcionadas para descobrir seu código de barras.</p>
 
-<label for="url">Cole o link do produto:</label>
-<input id="url" type="url" placeholder="https://www.amazon.com.br/...">
+<label for="url">Link do produto</label>
+<input id="url" placeholder="Cole o link da Amazon ou Mercado Livre">
 
-<button onclick="pesquisar()">PESQUISAR EAN</button>
+<button onclick="identificar()">IDENTIFICAR PRODUTO</button>
 
-<div id="result"></div>
+<div id="result" class="result">
+<span class="tag" id="market"></span>
+<h3>Produto identificado</h3>
+<label>Nome ou modelo para pesquisar</label>
+<input id="product">
+<button onclick="buscar('ean')">PESQUISAR EAN NO GOOGLE</button>
+<button class="secondary" onclick="buscar('gtin')">PESQUISAR GTIN NO GOOGLE</button>
+<button class="secondary" onclick="buscar('bing')">PESQUISAR NO BING</button>
 
-<p class="small">
-A ferramenta prepara pesquisas públicas para localizar o EAN.
-Os resultados precisam ser conferidos na fonte. Nenhum código é inventado ou confirmado automaticamente.
+<hr style="border:0;border-top:1px solid #ddd;margin:22px 0">
+
+<h3>Validar código encontrado</h3>
+<p class="small">Digite o EAN-13 localizado para verificar o dígito de controle.</p>
+<input id="ean" inputmode="numeric" maxlength="13" placeholder="Digite os 13 números">
+<button class="secondary" onclick="validar()">VALIDAR EAN-13</button>
+<div id="eanStatus"></div>
+<button id="copy" style="display:none" onclick="copiar()">COPIAR EAN</button>
+</div>
+
+<p class="small" style="margin-top:22px">
+A ferramenta não inventa códigos. Os resultados das pesquisas precisam ser conferidos em fontes confiáveis, preferencialmente no fabricante.
 </p>
 </div>
 </main>
 
 <script>
-function pesquisar(){
- const campo=document.getElementById("url");
- const resultado=document.getElementById("result");
- let endereco;
+let codigoValido="";
 
- try{
-   endereco=new URL(campo.value.trim());
- }catch(e){
-   alert("Cole um link válido.");
-   return;
+function identificar(){
+ const raw=document.getElementById("url").value.trim();
+ const out=document.getElementById("result");
+ let u;
+
+ try{u=new URL(raw)}catch(e){
+  alert("Cole um link válido.");
+  return;
  }
 
- const dominio=endereco.hostname.toLowerCase();
+ const host=u.hostname.toLowerCase();
  let marketplace="";
 
- if(dominio.includes("amazon.")){
-   marketplace="Amazon";
- }else if(dominio.includes("mercadolivre.") || dominio.includes("mercadolibre.")){
-   marketplace="Mercado Livre";
- }else{
-   alert("Use um link da Amazon ou do Mercado Livre.");
-   return;
+ if(host.includes("amazon.")) marketplace="AMAZON";
+ else if(host.includes("mercadolivre.")||host.includes("mercadolibre.")) marketplace="MERCADO LIVRE";
+ else{
+  alert("Use um link da Amazon ou do Mercado Livre.");
+  return;
  }
 
- let slug=endereco.pathname.split("/")
-   .filter(Boolean)
-   .filter(x=>!/^dp$|^gp$|^product$|^p$/i.test(x))
-   .join(" ");
-
+ let slug=u.pathname.split("/").filter(Boolean).join(" ");
  try{slug=decodeURIComponent(slug)}catch(e){}
 
- slug=slug.replace(/[-_]+/g," ")
-   .replace(/\b(MLB\d+|B[A-Z0-9]{9})\b/gi," ")
-   .replace(/\s+/g," ")
-   .trim();
+ slug=slug.replace(/[-_]+/g," ").replace(/\s+/g," ").trim();
 
- if(slug.length<3){
-   slug=endereco.href;
+ // Remove identificadores técnicos do anúncio quando possível
+ slug=slug.replace(/\bMLB\d+\b/gi," ").replace(/\s+/g," ").trim();
+
+ document.getElementById("market").textContent=marketplace;
+ document.getElementById("product").value=slug;
+ out.style.display="block";
+ document.getElementById("eanStatus").textContent="";
+ document.getElementById("copy").style.display="none";
+ out.scrollIntoView({behavior:"smooth"});
+}
+
+function buscar(tipo){
+ const nome=document.getElementById("product").value.trim();
+ if(!nome){alert("Informe o nome ou modelo do produto.");return;}
+
+ let q;
+ if(tipo==="ean") q='"'+nome+'" EAN OR "código de barras"';
+ else if(tipo==="gtin") q='"'+nome+'" GTIN OR GTIN-13 OR barcode';
+ else q='"'+nome+'" EAN GTIN barcode';
+
+ const base=tipo==="bing"?
+ "https://www.bing.com/search?q=":
+ "https://www.google.com/search?q=";
+
+ window.open(base+encodeURIComponent(q),"_blank");
+}
+
+function validar(){
+ const e=document.getElementById("ean").value.replace(/\D/g,"");
+ const status=document.getElementById("eanStatus");
+ const copy=document.getElementById("copy");
+ copy.style.display="none";
+ codigoValido="";
+
+ if(e.length!==13){
+  status.textContent="Digite exatamente 13 números.";
+  status.style.color="#b45309";
+  return;
  }
 
- const consulta='"'+slug+'" (EAN OR GTIN OR "código de barras")';
+ let soma=0;
+ for(let i=0;i<12;i++){
+  soma+=Number(e[i])*(i%2===0?1:3);
+ }
+ const digito=(10-(soma%10))%10;
 
- const google="https://www.google.com/search?q="+encodeURIComponent(consulta);
- const bing="https://www.bing.com/search?q="+encodeURIComponent(consulta);
+ if(digito===Number(e[12])){
+  codigoValido=e;
+  status.textContent="✓ EAN-13 matematicamente válido. Confirme se pertence ao produto.";
+  status.style.color="#16803d";
+  copy.style.display="block";
+ }else{
+  status.textContent="✕ Dígito verificador inválido.";
+  status.style.color="#c62828";
+ }
+}
 
- resultado.style.display="block";
- resultado.innerHTML=
-  "<strong>Produto recebido</strong><br>"+
-  "Marketplace: "+marketplace+
-  "<br><br>Pesquise o código nas fontes públicas:"+
-  '<button onclick="window.open(\''+google+'\',\'_blank\')">PESQUISAR NO GOOGLE</button>'+
-  '<button class="secondary" onclick="window.open(\''+bing+'\',\'_blank\')">PESQUISAR NO BING</button>';
+function copiar(){
+ if(codigoValido) navigator.clipboard.writeText(codigoValido);
 }
 </script>
 </body>
